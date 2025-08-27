@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import sqlite3
 from pydantic import BaseModel
 
-con = sqlite3.connect("fights.db")
+con = sqlite3.connect("fights.db", check_same_thread=False)
 
 def initalize_databse():
     create_event_table = """
@@ -14,7 +14,10 @@ def initalize_databse():
         winner TEXT
     );
     """
+    cursor=con.cursor()
+    cursor.execute(create_event_table)
 
+    initialize_database()
 app = FastAPI()
 
 
@@ -31,8 +34,36 @@ class CreateEventRequest(BaseModel):
     winner: str
 
 
+
+
 @app.post("/event")
 def create_event(event: CreateEventRequest):
+    insertStatement = f"""
+    INSERT INTO events (
+        "eventName",
+        "participantOne",
+        "participantTwo",
+        "time",
+        "winner"
+    )VALUES(
+        {event.eventName},
+        {event.participantOne},
+        {event.participantTwo},
+        {event.time},
+        {event.winner}
+
+
+        
+    )
+    """
+    
+    cursor = con.cursor()
+    res = cursor.execute(insertStatement)
+    affected = res.recount()
+    print(f"Inserted {affected} rows in the database")
+    con.commit
+
+
     return event
 
 
@@ -43,7 +74,11 @@ def delete_event():
 
 @app.get("/event/get-all")
 def get_all_events():
-    return "All event"
+    get_statement = "SELECT* from events;"
+    cursor = con.cursor()
+    res = cursor.execute(get_statement)
+    results = res.fetchall()
+    return results
 
 
 if __name__ == "__main__":
